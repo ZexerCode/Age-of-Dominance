@@ -1,5 +1,6 @@
 // Yapay zekâ: askeri harekât, üretim, araştırma, diplomasi
 import { UNIT_TYPES, TERRAINS, GOVERNMENTS, CONSCRIPTION_LAWS, TECH_BY_ID } from '../data/rules.js';
+import { dat } from './tr.js';
 import { clamp } from './util.js';
 import * as eco from './economy.js';
 import * as mil from './military.js';
@@ -635,7 +636,7 @@ function monthlyAid(g) {
             const type = donor.techTier >= 4 && g.rng.chance(0.4) ? 'armor' : 'mechanized';
             g.addUnit(recv, type, pid, { x: 0.1 });
             rc.lendLease = (rc.lendLease || 0) + 1;
-            if (g.involvesPlayer([recv, donor.tag, enemyLead]) || g.rng.chance(0.25)) g.news(`📦 ${donor.name}, ${rc.name}'na bir ${UNIT_TYPES[type].name} donatacak askeri teçhizat gönderdi.`, { type: 'diplo', tags: [donor.tag, recv] });
+            if (g.involvesPlayer([recv, donor.tag, enemyLead]) || g.rng.chance(0.25)) g.news(`📦 ${donor.name}, ${dat(rc.name)} bir ${UNIT_TYPES[type].name} donatacak askeri teçhizat gönderdi.`, { type: 'diplo', tags: [donor.tag, recv] });
           }
         }
       }

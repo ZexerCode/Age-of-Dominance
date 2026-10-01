@@ -1,5 +1,6 @@
 // Olaylar, kararlar, seçimler, inşaat projeleri ve dünya haberleri
 import { DECISIONS, UNIT_TYPES, TECH_BY_ID } from '../data/rules.js';
+import { gen, loc } from './tr.js';
 import { clamp, dayToDate } from './util.js';
 import { countryGdp, manpowerInfo, techCost } from './economy.js';
 import { declareWar, concludePeace, warScore, joinWar, applyPeaceTerms, acceptTreaty, TREATY_NAMES } from './diplomacy.js';
@@ -39,7 +40,7 @@ export const EVENTS = {
   protests: {
     title: 'Kitlesel Protestolar',
     chance: (g, c) => (c.stability < 50 ? 0.02 * (50 - c.stability) / 20 : 0),
-    text: (g, c) => `${c.name}'nın büyük şehirlerinde hükümet karşıtı gösteriler büyüyor. Göstericiler meydanları terk etmiyor.`,
+    text: (g, c) => `${gen(c.name)} büyük şehirlerinde hükümet karşıtı gösteriler büyüyor. Göstericiler meydanları terk etmiyor.`,
     pre: (g, c) => { c.stability = clamp(c.stability - 3, 0, 100); },
     options: [
       { label: 'Taleplere kulak ver, reform sözü ver', desc: 'Hazine: GSYH’nin %0,08’i, istikrar +6', ai: 2, fx: (g, c) => { c.treasury -= countryGdp(g, c.tag) * 0.0008; c.stability = clamp(c.stability + 6, 0, 100); } },
@@ -67,11 +68,11 @@ export const EVENTS = {
   coup: {
     title: 'Darbe Girişimi!',
     chance: (g, c) => (['hyb', 'aut', 'jun', 'the'].includes(c.gov) && c.stability < 25 ? 0.04 : 0),
-    text: (g, c) => `Ordu içindeki bir grup ${c.name}'nda yönetime el koymaya çalışıyor! Başkentte tanklar görüldü.`,
+    text: (g, c) => `Ordu içindeki bir grup ${loc(c.name)} yönetime el koymaya çalışıyor! Başkentte tanklar görüldü.`,
     options: [
       { label: 'Sadık birliklerle darbeyi bastır', desc: '%60 başarı: istikrar +12. Başarısızlık: askeri yönetim kurulur.', ai: 1, fx: (g, c) => {
-        if (g.rng.chance(0.6)) { c.stability = clamp(c.stability + 12, 0, 100); g.news(`${c.name}'nda darbe girişimi bastırıldı.`, { type: 'politics', tags: [c.tag], important: true }); }
-        else { c.gov = 'jun'; c.leader = { name: 'Askerî Konsey', title: 'Cunta Lideri', wiki: '' }; c.stability = 38; g.news(`${c.name}'nda ordu yönetime el koydu!`, { type: 'politics', tags: [c.tag], important: true }); }
+        if (g.rng.chance(0.6)) { c.stability = clamp(c.stability + 12, 0, 100); g.news(`${loc(c.name)} darbe girişimi bastırıldı.`, { type: 'politics', tags: [c.tag], important: true }); }
+        else { c.gov = 'jun'; c.leader = { name: 'Askerî Konsey', title: 'Cunta Lideri', wiki: '' }; c.stability = 38; g.news(`${loc(c.name)} ordu yönetime el koydu!`, { type: 'politics', tags: [c.tag], important: true }); }
       } },
       { label: 'Müzakere et ve yetki paylaş', desc: 'İstikrar +5, savaş desteği -10', ai: 1, fx: (g, c) => { c.stability = clamp(c.stability + 5, 0, 100); c.warSupport = clamp(c.warSupport - 10, 0, 100); } },
     ],
@@ -158,7 +159,7 @@ export function resolvePending(g, pendingId, choice) {
     else {
       g.addRel(me, p.ally, -40);
       g.C(me).stability = clamp(g.C(me).stability - 2, 0, 100);
-      g.news(`Müttefikiniz ${g.C(p.ally).name}'nın çağrısını reddettiniz. İlişkiler zarar gördü.`, { type: 'diplo', tags: [me, p.ally] });
+      g.news(`Müttefikiniz ${gen(g.C(p.ally).name)} çağrısını reddettiniz. İlişkiler zarar gördü.`, { type: 'diplo', tags: [me, p.ally] });
     }
   } else if (p.kind === 'peaceConference') {
     const mode = ['annex', 'puppet', 'occupied'][choice] || 'occupied';
@@ -172,7 +173,7 @@ export function resolvePending(g, pendingId, choice) {
     const war = s.wars.find((w) => w.id === p.warId && !w.ended);
     if (!war) return;
     if (choice === 0) concludePeace(g, war, p.from, me, p.type, true);
-    else g.news(`${g.C(p.from).name}'nın barış teklifini reddettiniz.`, { type: 'diplo', tags: [me, p.from] });
+    else g.news(`${gen(g.C(p.from).name)} barış teklifini reddettiniz.`, { type: 'diplo', tags: [me, p.from] });
   }
   g.emit('pending');
 }
@@ -521,7 +522,7 @@ function genericElections(g) {
       c.warSupport = clamp(c.warSupport - 5, 0, 100);
     } else c.stability = clamp(c.stability + 3, 0, 100);
     if (g.isPlayer(c.tag) || g.militaryPower(c.tag) > 400) {
-      g.news(`🗳️ ${c.name}’nda genel seçim: ${win ? 'iktidar güven tazeledi' : 'muhalefet iktidara geldi'}.`, { type: 'politics', tags: [c.tag], important: g.isPlayer(c.tag) });
+      g.news(`🗳️ ${loc(c.name)} genel seçim: ${win ? 'iktidar güven tazeledi' : 'muhalefet iktidara geldi'}.`, { type: 'politics', tags: [c.tag], important: g.isPlayer(c.tag) });
     }
   }
 }

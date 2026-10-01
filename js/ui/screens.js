@@ -1,5 +1,6 @@
 // Ekranlar ve modal pencereler
 import { h, mount, clear, section, kv, stat, btn } from './dom.js';
+import { dat } from '../engine/tr.js';
 import { flagImg, leaderPortrait, wikiAny } from './assets.js';
 import { Game } from '../engine/game.js';
 import { createGame } from '../engine/setup.js';
@@ -125,7 +126,7 @@ export function aidModal(app, tag) {
   let close;
   close = openModal(app, {
     title: 'Yardım Gönder',
-    body: h('div', null, `${g.C(tag).name}'na mali ve askeri yardım gönderin. İlişkiler gönderilen miktarla orantılı olarak iyileşir. Hazineniz: ${fmtMoney(c.treasury)}.`),
+    body: h('div', null, `${dat(g.C(tag).name)} mali ve askeri yardım gönderin. İlişkiler gönderilen miktarla orantılı olarak iyileşir. Hazineniz: ${fmtMoney(c.treasury)}.`),
     foot: h('div', { class: 'row', style: { justifyContent: 'flex-end' } }, amounts.map((a) => btn(fmtMoney(a), () => { close(); const r = dip.sendAid(g, me, tag, a); if (!r.ok) app.toast(r.why, 'war'); app.refreshUi(true); app.updateTopbar(); }, { cls: 'primary', disabled: c.treasury < a }))),
   });
 }

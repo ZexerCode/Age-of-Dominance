@@ -1,5 +1,6 @@
 // Sağ paneller: il, ülke; alt birlik çubuğu
 import { h, mount, section, kv, stat, btn, meter, progress } from './dom.js';
+import { dat, acc } from '../engine/tr.js';
 import { flagImg, leaderPortrait, wikiAny } from './assets.js';
 import { UNIT_TYPES, TERRAINS, GOVERNMENTS, BLOC_NAMES } from '../data/rules.js';
 import { fmtMoney, fmtInt, fmt1, fmtManpower, formatDate } from '../engine/util.js';
@@ -194,7 +195,7 @@ export function renderCountryPanel(app, el, tag) {
     body.appendChild(section('⚔️ Savaşlar', h('div', { class: 'stack' }, wars.map((w) => {
       const sc = dip.warScore(g, w) * (w.att.includes(tag) ? 1 : -1);
       return h('div', { class: 'card' }, h('div', { style: { fontWeight: 600 } }, w.name),
-        h('div', { class: 'tiny muted' }, `${formatDate(Math.max(0, w.start))}'den beri · Skor ${sc > 0 ? '+' : ''}${fmtInt(sc)}`));
+        h('div', { class: 'tiny muted' }, `${formatDate(Math.max(0, w.start))} tarihinden beri · Skor ${sc > 0 ? '+' : ''}${fmtInt(sc)}`));
     }))));
   }
   // Antlaşmalar
@@ -205,7 +206,7 @@ export function renderCountryPanel(app, el, tag) {
       fid ? h('span', { class: 'tag blue' }, `${g.s.factions[fid].name} (${g.s.factions[fid].members.length} üye)`) : null,
       tr.slice(0, 24).map((t) => {
         const other = g.C(t.a === tag ? t.b : t.a);
-        const label = t.t === 'guarantee' ? (t.a === tag ? `${other.short}'yı garanti eder` : `${other.short} tarafından garanti`) : `${NAMES[t.t]}: ${other.short}`;
+        const label = t.t === 'guarantee' ? (t.a === tag ? `${acc(other.short)} garanti eder` : `${other.short} tarafından garanti`) : `${NAMES[t.t]}: ${other.short}`;
         return h('span', { class: 'tag', style: { cursor: 'pointer' }, onclick: () => app.openCountry(other.tag) }, label);
       }))));
   }
@@ -246,10 +247,10 @@ function diplomacyActions(app, tag) {
     if (g.guarantees(me, tag)) add('✂️ Garantiyi kaldır', () => res(dip.cancelTreaty(g, me, tag, 'guarantee')));
     else add('🛡️ Bağımsızlığını garanti et', () => res(dip.proposeTreaty(g, me, tag, 'guarantee')));
     const fid = g.factionOf.get(me);
-    if (fid && g.s.factions[fid].leader === me && !g.factionOf.get(tag)) add(`➕ ${g.s.factions[fid].name}’na davet et`, () => res(dip.inviteToFaction(g, me, tag)));
+    if (fid && g.s.factions[fid].leader === me && !g.factionOf.get(tag)) add(`➕ ${dat(g.s.factions[fid].name)} davet et`, () => res(dip.inviteToFaction(g, me, tag)));
     if (g.factionOf.get(tag) && !g.factionOf.get(me) && g.s.factions[g.factionOf.get(tag)].leader === tag) {
       const f = g.factionOf.get(tag);
-      add(`🛡️ ${g.s.factions[f].name}’na katılmak iste`, () => res(dip.joinFaction(g, me, f)), dip.canJoinFaction(g, me, f));
+      add(`🛡️ ${dat(g.s.factions[f].name)} katılmak iste`, () => res(dip.joinFaction(g, me, f)), dip.canJoinFaction(g, me, f));
     }
   }
   out.appendChild(grid);
@@ -261,7 +262,7 @@ function diplomacyActions(app, tag) {
     const allies = [...g.alliesOf(tag)].filter((t) => g.C(t)?.alive).map((t) => g.C(t).short);
     const guarantors = g.s.treaties.filter((t) => t.t === 'guarantee' && t.b === tag).map((t) => g.C(t.a).short);
     const warn = [allies.length ? `Müttefikleri: ${allies.slice(0, 8).join(', ')}${allies.length > 8 ? '…' : ''}` : '', guarantors.length ? `Garantörleri: ${guarantors.join(', ')}` : ''].filter(Boolean).join('. ');
-    out.appendChild(btn('🔥 SAVAŞ İLAN ET', () => confirmModal(app, 'Savaş İlanı', `${c.name}'na savaş ilan etmek üzeresiniz.${cost.hasCB ? '' : ' Haklı bir gerekçeniz yok: istikrar ' + cost.stability + ' puan düşecek ve dünya kamuoyu tepki gösterecek.'}${cost.nap ? ' Saldırmazlık paktını bozacaksınız!' : ''} ${warn}`, 'Savaş ilan et', () => res(dip.declareWar(g, me, tag)), true), { cls: 'danger block', disabled: !chk.ok, why: chk.why }));
+    out.appendChild(btn('🔥 SAVAŞ İLAN ET', () => confirmModal(app, 'Savaş İlanı', `${dat(c.name)} savaş ilan etmek üzeresiniz.${cost.hasCB ? '' : ' Haklı bir gerekçeniz yok: istikrar ' + cost.stability + ' puan düşecek ve dünya kamuoyu tepki gösterecek.'}${cost.nap ? ' Saldırmazlık paktını bozacaksınız!' : ''} ${warn}`, 'Savaş ilan et', () => res(dip.declareWar(g, me, tag)), true), { cls: 'danger block', disabled: !chk.ok, why: chk.why }));
     if (warn) out.appendChild(h('div', { class: 'tiny muted' }, `⚠️ ${warn}`));
   }
   return out;

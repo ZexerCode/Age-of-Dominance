@@ -1,5 +1,6 @@
 // Diplomasi: savaş, barış, antlaşmalar, ilişkiler, teslim olma
 import { GOVERNMENTS } from '../data/rules.js';
+import { dat, gen } from './tr.js';
 import { clamp, pairKey } from './util.js';
 import { countryValue, provinceValue, countryGdp } from './economy.js';
 import { relocateCapital } from './military.js';
@@ -62,7 +63,7 @@ export function declareWar(g, att, def, opts = {}) {
     if (r > 20) g.addRel(o.tag, att, -(r / 100) * (cost.hasCB ? 8 : 22));
   }
   s.worldTension = clamp(s.worldTension + 4 + (MAJOR.has(att) || MAJOR.has(def) ? 10 : 0), 0, 100);
-  g.news(`🔥 ${a.name}, ${d.name}'na savaş ilan etti!${cost.hasCB ? '' : ' (Haklı bir gerekçe olmadan)'}`, { type: 'war', tags: [att, def], important: true });
+  g.news(`🔥 ${a.name}, ${dat(d.name)} savaş ilan etti!${cost.hasCB ? '' : ' (Haklı bir gerekçe olmadan)'}`, { type: 'war', tags: [att, def], important: true });
   relocateForeignUnits(g, war);
   mobilizeReserves(g, def);
   // Müttefik çağrısı
@@ -280,7 +281,7 @@ export function capitulate(g, war, tag) {
     s.pending.push({
       kind: 'peaceConference', id: s.newsSeq++, target: tag, warId: war.id, day: s.day, winners: enemies, main,
       title: 'Barış Konferansı',
-      text: `${c.name} teslim oldu. Barış şartlarını belirleyin. (Topraklarının %${Math.round(f * 100)}'i işgal altında)`,
+      text: `${c.name} teslim oldu. Barış şartlarını belirleyin. (İşgal oranı: %${Math.round(f * 100)})`,
     });
     g.emit('pending');
     // Geçici olarak savaştan çekil (şartlar uygulanana kadar ilerleme durur)
@@ -335,7 +336,7 @@ export function applyPeaceTerms(g, loser, winners, mode, main) {
     leaveAllFactions(g, loser);
     s.treaties = s.treaties.filter((t) => !(t.a === loser || t.b === loser) || t.t === 'guarantee' && t.a === main);
     g.rebuildTreaties();
-    g.news(`${c.name}, ${g.C(main).name}'nın kukla devleti oldu.`, { type: 'diplo', tags: [loser, main], important: true });
+    g.news(`${c.name}, ${gen(g.C(main).name)} kukla devleti oldu.`, { type: 'diplo', tags: [loser, main], important: true });
   } else {
     for (const pid of [...(g.ownedProvs.get(loser) || [])]) {
       const ct = P.ctrl[pid];
@@ -542,7 +543,7 @@ export function proposeTreaty(g, from, to, type) {
   if (type === 'guarantee') {
     addTreaty(g, 'guarantee', from, to);
     g.addRel(from, to, 10);
-    g.news(`${g.C(from).name}, ${g.C(to).name}'nın bağımsızlığını garanti etti.`, { type: 'diplo', tags: [from, to] });
+    g.news(`${g.C(from).name}, ${gen(g.C(to).name)} bağımsızlığını garanti etti.`, { type: 'diplo', tags: [from, to] });
     return { ok: true };
   }
   if (g.isPlayer(to)) {
@@ -656,11 +657,11 @@ export function toggleSanction(g, from, to) {
   if (t.sanctions.includes(from)) {
     t.sanctions = t.sanctions.filter((x) => x !== from);
     g.addRel(from, to, 10);
-    g.news(`${g.C(from).name}, ${t.name}'na yönelik yaptırımları kaldırdı.`, { type: 'diplo', tags: [from, to] });
+    g.news(`${g.C(from).name}, ${dat(t.name)} yönelik yaptırımları kaldırdı.`, { type: 'diplo', tags: [from, to] });
   } else {
     t.sanctions.push(from);
     g.addRel(from, to, -20);
-    g.news(`💼 ${g.C(from).name}, ${t.name}'na ekonomik yaptırım uyguladı.`, { type: 'diplo', tags: [from, to], important: g.involvesPlayer([from, to]) });
+    g.news(`💼 ${g.C(from).name}, ${dat(t.name)} ekonomik yaptırım uyguladı.`, { type: 'diplo', tags: [from, to], important: g.involvesPlayer([from, to]) });
   }
   return { ok: true };
 }
@@ -671,7 +672,7 @@ export function justifyWar(g, from, to) {
   c.justify = { target: to, until: g.s.day + 45 };
   g.addRel(from, to, -10);
   g.s.worldTension = clamp(g.s.worldTension + 1.5, 0, 100);
-  if (g.isPlayer(to) || g.rng.chance(0.4)) g.news(`🕵️ ${c.name}, ${g.C(to).name}'na karşı savaş gerekçesi hazırlıyor!`, { type: 'diplo', tags: [from, to], important: g.isPlayer(to) });
+  if (g.isPlayer(to) || g.rng.chance(0.4)) g.news(`🕵️ ${c.name}, ${dat(g.C(to).name)} karşı savaş gerekçesi hazırlıyor!`, { type: 'diplo', tags: [from, to], important: g.isPlayer(to) });
   return { ok: true };
 }
 export function sendAid(g, from, to, amount) {
@@ -681,7 +682,7 @@ export function sendAid(g, from, to, amount) {
   b.treasury += amount;
   const gdpB = Math.max(1, countryGdp(g, to));
   g.addRel(from, to, clamp(amount / gdpB * 2000, 1, 25));
-  if (g.involvesPlayer([from, to]) || amount > 5) g.news(`💰 ${a.name}, ${b.name}'na ${amount.toFixed(1)} milyar $ yardım gönderdi.`, { type: 'diplo', tags: [from, to] });
+  if (g.involvesPlayer([from, to]) || amount > 5) g.news(`💰 ${a.name}, ${dat(b.name)} ${amount.toFixed(1)} milyar $ yardım gönderdi.`, { type: 'diplo', tags: [from, to] });
   return { ok: true };
 }
 
