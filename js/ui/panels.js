@@ -50,7 +50,8 @@ export function renderProvincePanel(app, el, pid) {
       h('img', { src: d.thumb, referrerpolicy: 'no-referrer', style: { width: '100%', maxHeight: '150px', objectFit: 'cover', borderRadius: '6px', marginBottom: '10px', border: '1px solid var(--line)' } })));
   });
 
-  body.appendChild(h('div', { class: 'stack', style: { marginBottom: '12px' } },
+  if (owner.tag !== me) body.appendChild(btn(`🏳️ ${owner.short}: ülke bilgisi ve diplomasi`, () => app.openCountry(owner.tag), { cls: 'block', title: 'Ülke paneli' }));
+  body.appendChild(h('div', { class: 'stack', style: { marginBottom: '12px', marginTop: owner.tag !== me ? '8px' : 0 } },
     h('div', { class: 'row between' }, h('span', { class: 'muted' }, 'Sahibi'), countryLink(app, owner)),
     ctrl !== owner ? h('div', { class: 'row between' }, h('span', { class: 'red' }, 'İşgal eden'), countryLink(app, ctrl)) : null,
     P.core[pid] !== P.owner[pid] ? h('div', { class: 'row between' }, h('span', { class: 'muted' }, 'Asıl sahibi (çekirdek)'), countryLink(app, g.C(P.core[pid]))) : null));

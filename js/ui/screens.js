@@ -84,7 +84,7 @@ export function showPending(app, p) {
   }
   const flagC = p.from ? g.C(p.from) : p.ally ? g.C(p.ally) : p.target ? g.C(p.target) : null;
   let close;
-  const foot = h('div', { class: 'stack' }, options.map((o) => h('button', { class: 'btn option', onclick: () => { close(); done(o.i); } }, o.label, o.desc ? h('span', { class: 'od' }, o.desc) : null)));
+  const foot = h('div', { class: 'stack' }, options.map((o) => h('button', { class: 'btn option', onclick: () => { done(o.i); close(); } }, o.label, o.desc ? h('span', { class: 'od' }, o.desc) : null)));
   close = openModal(app, {
     title: p.title, banner, bannerCls: cls, closable: false,
     body: h('div', null, flagC ? h('div', { class: 'row', style: { marginBottom: '10px' } }, flagImg(flagC, 'md'), h('b', null, flagC.name)) : null, h('div', null, p.text), h('div', { class: 'tiny muted', style: { marginTop: '8px' } }, formatDate(p.day))),

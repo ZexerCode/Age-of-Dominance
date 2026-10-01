@@ -691,8 +691,9 @@ export class MapRenderer {
       const own = gr.owner === me;
       const enemy = me && g.atWar(gr.owner, me);
       const ally = me && !own && (g.isAlly(gr.owner, me) || g.coBelligerents(me).has(gr.owner));
+      // Kalabalığı azalt: tarafsız birlikler yalnızca yakın zoomda
+      if (!own && !enemy && !ally && z < 2.6) continue;
       if (!big) {
-        if (!own && !enemy && z < 0.9) continue;
         const r = Math.min(7, 2.2 + Math.sqrt(gr.units.length) * 1.4);
         sx += (gr.idx - (gr.of - 1) / 2) * (r * 2 + 2);
         ctx.fillStyle = shade(this.colorOf(gr.owner), -0.35);
