@@ -228,7 +228,7 @@ export function showCountrySelect(app) {
       h('div', { style: { padding: '12px 14px', borderTop: '1px solid var(--line)' } }, btn(`▶ ${c.short} ile Oyna`, () => app.startNewGame(selected, difficulty, aggression), { cls: 'lg primary block' })));
     wikiAny([[c.wiki, 'tr'], [c.name, 'tr'], [c.en, 'en']]).then((d) => {
       if (!about.isConnected) return;
-      if (!d) { about.textContent = 'Özet bulunamadı.'; return; }
+      if (!d) { about.textContent = 'Wikipedia özeti şu anda alınamadı (bağlantı yok ya da sayfa bulunamadı).'; return; }
       mount(about, h('div', null, d.extract.length > 700 ? `${d.extract.slice(0, 700)}…` : d.extract), h('a', { class: 'src', href: d.url, target: '_blank', rel: 'noopener' }, `Kaynak: Wikipedia (${d.lang})`));
     });
   };

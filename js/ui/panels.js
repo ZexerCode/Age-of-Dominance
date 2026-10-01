@@ -215,7 +215,7 @@ export function renderCountryPanel(app, el, tag) {
   body.appendChild(section('📖 Hakkında', about));
   wikiAny([[c.wiki, 'tr'], [c.name, 'tr'], [c.en, 'en']]).then((d) => {
     if (!about.isConnected) return;
-    if (!d) { about.textContent = 'Özet bulunamadı.'; return; }
+    if (!d) { about.textContent = 'Wikipedia özeti şu anda alınamadı (bağlantı yok ya da sayfa bulunamadı).'; return; }
     mount(about, h('div', null, d.extract.length > 600 ? `${d.extract.slice(0, 600)}…` : d.extract), h('a', { class: 'src', href: d.url, target: '_blank', rel: 'noopener' }, `Kaynak: Wikipedia (${d.lang})`));
   });
 }
