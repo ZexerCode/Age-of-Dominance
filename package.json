@@ -1,0 +1,21 @@
+{
+  "name": "age-of-dominance",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Web tabanlı modern dünya büyük strateji oyunu",
+  "type": "module",
+  "scripts": {
+    "start": "node tools/serve.mjs",
+    "build:map": "node tools/build-map.mjs",
+    "test": "node --test tests/"
+  },
+  "devDependencies": {
+    "d3-delaunay": "^6.0.4",
+    "d3-geo": "^3.1.1",
+    "mapshaper": "^0.7.72",
+    "playwright": "^1.63.0",
+    "polygon-clipping": "^0.15.7",
+    "polylabel": "^2.1.0",
+    "topojson-client": "^3.1.0"
+  }
+}
