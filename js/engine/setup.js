@@ -173,6 +173,8 @@ export function createGame(world, opts = {}) {
     s.countries[tag] = c;
   }
 
+  assignColors(s, world, provByTag);
+
   // --- İller ---
   const P = s.prov;
   for (const p of world.provinces) {
@@ -361,3 +363,42 @@ export function gdpOf(s, world, tag) {
 }
 
 export { CONSCRIPTION_LAWS };
+
+// Komşu ülkelerin renkleri birbirinden ayırt edilebilir olsun
+function hsl2hex(h, sat, l) {
+  sat /= 100; l /= 100;
+  const k = (n) => (n + h / 30) % 12;
+  const a = sat * Math.min(l, 1 - l);
+  const f = (n) => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+  const c = (x) => Math.round(x * 255).toString(16).padStart(2, '0');
+  return `#${c(f(0))}${c(f(8))}${c(f(4))}`;
+}
+const rgbOf = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+const cdist = (a, b) => { const A = rgbOf(a), B = rgbOf(b); return Math.sqrt(2 * (A[0] - B[0]) ** 2 + 4 * (A[1] - B[1]) ** 2 + 3 * (A[2] - B[2]) ** 2); };
+function assignColors(s, world, provByTag) {
+  const nb = {};
+  for (const [tag, list] of Object.entries(provByTag)) {
+    const set = new Set();
+    for (const pid of list) for (const e of world.adj[pid]) { const o = world.provinces[e.to].tag; if (o !== tag && (!e.sea || e.km < 250)) set.add(o); }
+    nb[tag] = set;
+  }
+  const palette = [];
+  for (let h = 0; h < 360; h += 12) for (const sat of [32, 45, 58]) for (const l of [42, 52, 62]) palette.push(hsl2hex(h, sat, l));
+  const explicit = new Set(Object.keys(COUNTRY_DATA).filter((t) => COUNTRY_DATA[t].col));
+  const order = Object.keys(s.countries).sort((a, b) => (provByTag[b]?.length || 0) - (provByTag[a]?.length || 0));
+  const done = new Set([...explicit].filter((t) => s.countries[t]));
+  for (const tag of order) {
+    if (explicit.has(tag)) continue;
+    const near = [...(nb[tag] || [])].filter((t) => done.has(t)).map((t) => s.countries[t].color);
+    let best = s.countries[tag].color, bd = -1;
+    const h0 = hashStr(tag) % palette.length;
+    for (let i = 0; i < palette.length; i++) {
+      const cand = palette[(i + h0) % palette.length];
+      const d = near.length ? Math.min(...near.map((c) => cdist(c, cand))) : 999;
+      if (d > bd + 25) { bd = d; best = cand; }
+      if (bd > 260) break;
+    }
+    s.countries[tag].color = best;
+    done.add(tag);
+  }
+}

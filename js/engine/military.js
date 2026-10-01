@@ -793,7 +793,7 @@ export function missileStrike(g, tag, pid) {
   P.dev[pid] = Math.min(0.6, P.dev[pid] + 0.04 * power);
   P.garr[pid] = Math.max(0, (P.garr[pid] ?? 1) - 0.1 * power);
   g.C(target).warSupport = clamp(g.C(target).warSupport - 0.5, 0, 100);
-  g.news(`🚀 ${c.name}, ${pname} bölgesine balistik füze saldırısı düzenledi.`, { type: 'strike', tags: [tag, target], pid });
+  if (g.involvesPlayer([tag, target]) || g.rng.chance(0.08)) g.news(`🚀 ${c.name}, ${pname} bölgesine balistik füze saldırısı düzenledi.`, { type: 'strike', tags: [tag, target], pid });
   g.emit('strike', { kind: 'missile', pid, tag });
   return { ok: true };
 }
@@ -816,7 +816,7 @@ export function droneStrike(g, tag, pid) {
     if (u.s < 0.06) killUnit(g, u, 'SİHA saldırısında imha edildi');
   }
   if (!units.length) g.s.prov.garr[pid] = Math.max(0, (g.s.prov.garr[pid] ?? 1) - 0.08 * power);
-  g.news(`🛩️ ${c.name} SİHA'ları ${pname} bölgesindeki ${units.length ? 'düşman birliklerini' : 'hedefleri'} vurdu${lost ? ` (${lost} SİHA kaybı)` : ''}.`, { type: 'strike', tags: [tag, target], pid });
+  if (g.involvesPlayer([tag, target]) || g.rng.chance(0.04)) g.news(`🛩️ ${c.name} SİHA'ları ${pname} bölgesindeki ${units.length ? 'düşman birliklerini' : 'hedefleri'} vurdu${lost ? ` (${lost} SİHA kaybı)` : ''}.`, { type: 'strike', tags: [tag, target], pid });
   g.emit('strike', { kind: 'drone', pid, tag });
   return { ok: true };
 }

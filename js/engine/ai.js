@@ -215,7 +215,7 @@ function strategicStrikes(g, c, fronts) {
   const cands = [];
   for (const f of fronts.values()) for (const e of f.adj) cands.push(e);
   // Düşman toprağındaki derin hedefler (füze)
-  if (c.missiles >= 10 && g.rng.chance(0.5)) {
+  if (c.missiles >= 10 && g.rng.chance(0.25)) {
     let best = null, bv = 0;
     const list = cands.length ? cands : [];
     for (const e of g.enemiesOf(tag)) { const cap = g.C(e).capital; if (cap >= 0) list.push(cap); }
@@ -226,7 +226,7 @@ function strategicStrikes(g, c, fronts) {
     }
     if (best !== null && bv > 5) mil.missileStrike(g, tag, best);
   }
-  if (c.drones >= 6 && cands.length && g.rng.chance(0.6)) {
+  if (c.drones >= 6 && cands.length && g.rng.chance(0.3)) {
     let best = null, bv = 0;
     for (const pid of cands) {
       const v = enemyPowerAt(g, pid, tag);
