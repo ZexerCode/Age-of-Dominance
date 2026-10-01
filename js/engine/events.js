@@ -2,7 +2,7 @@
 import { DECISIONS, UNIT_TYPES, TECH_BY_ID } from '../data/rules.js';
 import { gen, loc } from './tr.js';
 import { clamp, dayToDate } from './util.js';
-import { countryGdp, manpowerInfo, techCost } from './economy.js';
+import { countryGdp, countryFactories, manpowerInfo, techCost } from './economy.js';
 import { declareWar, concludePeace, warScore, joinWar, applyPeaceTerms, acceptTreaty, TREATY_NAMES } from './diplomacy.js';
 
 const SEISMIC = new Set(['TUR', 'JPN', 'IRN', 'CHL', 'IDN', 'NPL', 'MEX', 'PER', 'ECU', 'ITA', 'GRC', 'PAK', 'AFG', 'CHN', 'PHL', 'NZL', 'TWN', 'GTM', 'COL', 'MMR', 'USA', 'IND']);
@@ -255,7 +255,7 @@ export function takeDecision(g, tag, id) {
 
 // İnşaat projeleri (il bazlı)
 export const PROJECTS = {
-  factory: { name: 'Askeri Fabrika', days: 150, cost: (g, c) => 1.6 * c.costFactor + countryGdp(g, c.tag) * 0.0003, desc: '+1 askeri fabrika (150 gün)' },
+  factory: { name: 'Askeri Fabrika', days: 150, cost: (g, c) => (1.6 * c.costFactor + countryGdp(g, c.tag) * 0.0003) * (1 + countryFactories(g, c.tag) / 40), desc: '+1 askeri fabrika (150 gün)' },
   fort: { name: 'Tahkimat', days: 45, cost: (g, c, pid) => (0.25 + 0.15 * g.s.prov.fort[pid]) * c.costFactor, desc: '+1 tahkimat seviyesi (en fazla 5)' },
   infra: { name: 'Altyapı', days: 90, cost: (g, c, pid) => 0.5 * c.costFactor * g.s.prov.infra[pid], desc: '+1 altyapı (hız ve büyüme)' },
 };
@@ -268,6 +268,11 @@ export function canBuild(g, tag, pid, kind) {
   if (kind === 'infra' && P.infra[pid] >= 5) return { ok: false, why: 'Azami seviye', cost };
   if (kind === 'factory' && P.fac[pid] >= Math.max(2, Math.ceil(P.gdp[pid] / 15))) return { ok: false, why: 'Bu ilin ekonomisi daha fazla fabrikayı kaldıramaz', cost };
   if ((c.timers || []).some((t) => t.pid === pid && t.kind === kind)) return { ok: false, why: 'Zaten inşa ediliyor', cost };
+  if (kind === 'factory') {
+    const maxPar = 1 + Math.floor(countryFactories(g, tag) / 10);
+    const running = (c.timers || []).filter((t) => t.kind === 'factory').length;
+    if (running >= maxPar) return { ok: false, why: `Aynı anda en fazla ${maxPar} fabrika inşa edilebilir`, cost };
+  }
   if (c.treasury < cost) return { ok: false, why: 'Yetersiz hazine', cost };
   return { ok: true, cost };
 }
