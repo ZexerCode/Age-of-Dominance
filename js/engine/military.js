@@ -465,6 +465,35 @@ function sidePower(g, units, role, b, opp) {
   return { total, strSum, hard: strSum ? hardSum / strSum : 0, ap: strSum ? apSum / strSum : 0 };
 }
 
+// Yapay zekâ için muharebe tahmini (gerçek muharebe formülüyle aynı)
+export function estimateBattle(g, attackers, pid) {
+  if (!attackers.length) return { win: false, score: 0 };
+  const tag = attackers[0].o;
+  const P = g.s.prov;
+  const b = { p: pid, amph: attackers.some((u) => isSeaMove(g, u.p, pid)) };
+  const defenders = g.unitsAt(pid).filter((v) => g.atWar(v.o, tag));
+  const width = combatWidth(g, pid);
+  const dirs = new Set(attackers.map((u) => u.p)).size;
+  const pw = (u, k) => UNIT_TYPES[u.t][k] * u.s * (0.3 + u.g);
+  const fightA = [...attackers].sort((x, y) => pw(y, 'atk') - pw(x, 'atk')).slice(0, width + 2 * (dirs - 1));
+  const fightD = [...defenders].sort((x, y) => pw(y, 'def') - pw(x, 'def')).slice(0, width);
+  const A = sidePower(g, fightA, 'atk', b, fightD.length ? fightD : [{ o: P.ctrl[pid] }]);
+  A.total *= 1 + Math.min(0.3, 0.1 * (dirs - 1));
+  const D = fightD.length ? sidePower(g, fightD, 'def', b, fightA) : { total: 0, strSum: 0, hard: 0, ap: 0.2 };
+  const garrOn = g.atWar(tag, P.ctrl[pid]) && garrisonActive(g, pid);
+  D.total += garrOn ? garrisonPower(g, pid) * (defenders.length ? 0.5 : 1) : 0;
+  const orgOf = (list) => { let o = 0, w = 0; for (const x of list) { const m = UNIT_TYPES[x.t].org / 100; o += (x.g / m) * x.s; w += x.s; } return w ? o / w : 0; };
+  const orgA = orgOf(fightA) - 0.12;
+  const orgD = fightD.length ? orgOf(fightD) - 0.12 : (P.garr[pid] ?? 1) - 0.08;
+  const sA = Math.max(0.5, A.strSum), sD = fightD.length ? Math.max(0.5, D.strSum) : 1;
+  const pfOnDef = 1 - D.hard * (1 - A.ap) * 0.6;
+  const pfOnAtt = 1 - A.hard * (1 - D.ap) * 0.6;
+  // Savunmanın çökme süresi / saldırının çökme süresi
+  const tDef = orgD * sD / Math.max(0.01, A.total * pfOnDef);
+  const tAtt = orgA * sA / Math.max(0.01, D.total * pfOnAtt);
+  return { win: tDef < tAtt, score: tAtt / Math.max(0.001, tDef), days: tDef / BASE_DAMAGE, A: A.total, D: D.total };
+}
+
 function resolveBattles(g) {
   const s = g.s;
   const P = s.prov;

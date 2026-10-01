@@ -315,7 +315,7 @@ export const SCRIPTED = {
     title: 'Tayvan Boğazı Krizi',
     actor: 'CHN',
     cond: (g) => alive(g, 'CHN', 'TWN') && !g.atWar('CHN', 'TWN') && g.s.day > 120 && g.C('CHN').puppetOf === null,
-    chance: (g) => 0.007 * g.s.aiAggression * (g.s.worldTension > 50 ? 1.6 : 1),
+    chance: (g) => 0.009 * g.s.aiAggression * (g.s.worldTension > 50 ? 1.6 : 1),
     text: () => 'Halk Kurtuluş Ordusu Tayvan çevresinde şimdiye kadarki en büyük tatbikatını başlattı. Politbüro "yeniden birleşme" için tarihi bir fırsat görüyor.',
     options: [
       { label: 'Abluka ve çıkarma harekâtını başlat', desc: 'Tayvan’a savaş ilan et (ABD garantisi devreye girebilir)', ai: 0.3, fx: (g) => crisisWar(g, 'CHN', 'TWN', 'Tayvan Savaşı') },
@@ -326,7 +326,7 @@ export const SCRIPTED = {
     title: 'İsrail–İran Gerilimi',
     actor: 'ISR',
     cond: (g) => alive(g, 'ISR', 'IRN') && !g.atWar('ISR', 'IRN') && g.s.day > 60,
-    chance: () => 0.012,
+    chance: () => 0.015,
     text: () => 'İstihbarat raporları İran’ın uranyum zenginleştirme faaliyetlerini yeniden hızlandırdığını gösteriyor. Güvenlik kabinesi olağanüstü toplandı.',
     options: [
       { label: 'Nükleer tesislere kapsamlı hava harekâtı', desc: 'İran’a savaş ilan et', ai: 0.25, fx: (g) => crisisWar(g, 'ISR', 'IRN', 'İsrail–İran Savaşı') },

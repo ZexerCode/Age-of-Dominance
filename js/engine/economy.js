@@ -128,7 +128,7 @@ export function dailyEconomy(g) {
     for (const [other, until] of Object.entries(c.improving)) {
       if (until < s.day || !s.countries[other]?.alive || g.atWar(tag, other)) { delete c.improving[other]; continue; }
       g.addRel(tag, other, 0.35);
-      c.treasury -= Math.max(0.002, b.gdp * 0.000002);
+      c.treasury -= b.gdp * 0.000004;
     }
     // Savaş gerekçesi
     if (c.justify && c.justify.until <= s.day) {
@@ -355,7 +355,7 @@ export function growthRate(g, tag) {
     const a = aggOf(g, tag);
     gr -= 0.5 + 4 * (a.occupiedLoss / Math.max(0.001, a.gdp + a.occupiedLoss));
   }
-  gr -= Math.max(0, c.defPct - 4) * 0.12;
+  gr -= Math.max(0, c.defPct - 3) * 0.22;
   gr -= c.sanctions.length ? Math.min(1.2, sanctionImpact(g, tag)) : 0;
   gr -= c.exhaustion * 0.03;
   if (c.treasury < 0) gr -= 0.5;
@@ -376,6 +376,8 @@ export function stabilityTarget(g, tag) {
   const base = { dem: 62, hyb: 56, aut: 60, com: 66, mon: 68, the: 55, jun: 45 }[c.gov] ?? 55;
   let t = base + g.law(c).stability + g.modSum(c, 'stability');
   if (c.treasury < 0) t -= 10;
+  // Barış zamanında yüksek savunma harcaması halkı rahatsız eder
+  t -= Math.max(0, c.defPct - 3) * (g.isAtWar(tag) ? 0.4 : 1.5);
   t -= c.exhaustion * 0.3;
   const gr = growthRate(g, tag);
   t += clamp(gr - 2, -6, 6) * 1.5;
@@ -406,6 +408,7 @@ export function monthlyEconomy(g) {
     c.casualties *= 0.97;
     const atWar = g.isAtWar(tag);
     if (!atWar) c.exhaustion *= 0.8;
+    else c.exhaustion = clamp(c.exhaustion + 0.6, 0, 100);
     // istikrar ve savaş desteği kayması
     const st = stabilityTarget(g, tag);
     c.stability = clamp(c.stability + clamp(st - c.stability, -1.5, 1.5), 0, 100);

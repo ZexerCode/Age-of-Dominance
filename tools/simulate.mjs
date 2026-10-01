@@ -42,3 +42,13 @@ console.log('toplam', Date.now() - t0, 'ms');
 const important = g.s.news.filter(n => n.important || n.type==='war' || n.type==='peace');
 console.log('ÖNEMLİ HABERLER:'); for (const n of important.slice(-60)) console.log(g.dateStr(n.day), n.text);
 fs.writeFileSync('/tmp/claude-0/-home-user-Age-of-Dominance/6d9c8cff-8947-5984-91ef-6d5242fce63c/scratchpad/save.json', g.serialize());
+console.log('İSTATİSTİK', JSON.stringify(g.s.stats));
+for (const w of g.s.wars) console.log(`SAVAŞ ${w.name} [${w.att.join(',')}] vs [${w.def.join(',')}] ${g.dateStr(Math.max(0,w.start))} → ${w.ended ? g.dateStr(w.endDay) : 'sürüyor'}`);
+const dead = Object.values(g.s.countries).filter(c => !c.alive).map(c => c.name);
+console.log('YOK OLAN ÜLKELER:', dead.join(', '));
+const changed = {};
+for (let i = 0; i < g.world.n; i++) if (g.s.prov.owner[i] !== g.world.provinces[i].tag) { const k = `${g.world.provinces[i].tag}→${g.s.prov.owner[i]}`; changed[k] = (changed[k]||0)+1; }
+console.log('TOPRAK DEĞİŞİMLERİ:', JSON.stringify(changed));
+const rich = Object.values(g.s.countries).filter(c=>c.alive).sort((a,b)=>b.treasury-a.treasury).slice(0,8).map(c=>`${c.tag}:${c.treasury.toFixed(0)}`).join(' ');
+const poor = Object.values(g.s.countries).filter(c=>c.alive).sort((a,b)=>a.treasury-b.treasury).slice(0,8).map(c=>`${c.tag}:${c.treasury.toFixed(1)}`).join(' ');
+console.log('HAZİNE en yüksek:', rich, '| en düşük:', poor);

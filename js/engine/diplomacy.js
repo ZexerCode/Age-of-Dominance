@@ -3,6 +3,7 @@ import { GOVERNMENTS } from '../data/rules.js';
 import { clamp, pairKey } from './util.js';
 import { countryValue, provinceValue, countryGdp } from './economy.js';
 import { relocateCapital } from './military.js';
+import { RESERVES } from './setup.js';
 
 const MAJOR = new Set(['USA', 'CHN', 'RUS', 'IND', 'GBR', 'FRA', 'DEU', 'JPN']);
 
@@ -63,6 +64,7 @@ export function declareWar(g, att, def, opts = {}) {
   s.worldTension = clamp(s.worldTension + 4 + (MAJOR.has(att) || MAJOR.has(def) ? 10 : 0), 0, 100);
   g.news(`🔥 ${a.name}, ${d.name}'na savaş ilan etti!${cost.hasCB ? '' : ' (Haklı bir gerekçe olmadan)'}`, { type: 'war', tags: [att, def], important: true });
   relocateForeignUnits(g, war);
+  mobilizeReserves(g, def);
   // Müttefik çağrısı
   callAllies(g, war, def, 'def');
   callAllies(g, war, att, 'att');
@@ -129,7 +131,26 @@ export function joinWar(g, war, tag, side) {
   g.C(tag).warSupport = clamp(g.C(tag).warSupport + 5, 0, 100);
   g.news(`⚔️ ${g.C(tag).name}, ${war.name} savaşına ${side === 'def' ? 'savunan' : 'saldıran'} tarafta katıldı.`, { type: 'war', tags: [tag, ...other], important: g.involvesPlayer([...war.att, ...war.def]) });
   relocateForeignUnits(g, war);
+  if (side === 'def') mobilizeReserves(g, tag);
   g.emit('war', war);
+}
+
+// Yedeklerin seferberliği: saldırıya uğrayan ülke yedek tümenlerini silah altına alır
+export function mobilizeReserves(g, tag) {
+  const c = g.C(tag);
+  if (!c?.alive) return;
+  if ((c.reservesUsed ?? -9999) > g.s.day - 1095) return;
+  const k = RESERVES[tag] ?? 0;
+  const n = Math.min(24, Math.floor(k / 18));
+  if (n <= 0) return;
+  c.reservesUsed = g.s.day;
+  const P = g.s.prov;
+  const provs = (g.ownedProvs.get(tag) || []).filter((pid) => P.ctrl[pid] === tag);
+  if (!provs.length) return;
+  provs.sort((a, b) => P.pop[b] - P.pop[a]);
+  for (let i = 0; i < n; i++) g.addUnit(tag, c.techTier >= 3 ? 'infantry' : 'militia', provs[i % Math.min(provs.length, 6)], { g: 0.25, s: 0.85 });
+  c.warSupport = clamp(c.warSupport + 8, 0, 100);
+  g.news(`🎖️ ${c.name} genel seferberlik ilan etti: ${n} yedek tümen silah altına alındı.`, { type: 'mil', tags: [tag], important: g.isPlayer(tag) });
 }
 
 // Savaş başında düşman topraklarındaki birlikleri geri çek
@@ -264,11 +285,36 @@ export function capitulate(g, war, tag) {
     g.emit('pending');
     // Geçici olarak savaştan çekil (şartlar uygulanana kadar ilerleme durur)
     removeFromWar(g, war, tag);
+    setTruce(g, [tag, ...enemies]);
     returnOccupations(g, tag, enemies, true);
     return;
   }
+  const side = war.att.includes(tag) ? war.att : war.def;
+  const wasLeader = war.leadA === tag || war.leadD === tag;
   removeFromWar(g, war, tag);
+  setTruce(g, [tag, ...enemies]);
   applyPeaceTerms(g, tag, enemies, main && f >= 0.85 ? 'annex' : 'occupied', main);
+  if (wasLeader && !war.ended) settleRemainder(g, war, side === war.att ? war.att : war.def);
+}
+
+// Savaş lideri teslim olunca uzaktaki müttefikler beyaz barışla savaştan çekilir
+function settleRemainder(g, war, side) {
+  const P = g.s.prov;
+  for (const t of [...side]) {
+    if (g.isPlayer(t) || war.ended) continue;
+    const enemies = war.att.includes(t) ? war.def : war.att;
+    let contact = false;
+    for (const pid of g.ownedProvs.get(t) || []) {
+      if (enemies.includes(P.ctrl[pid])) { contact = true; break; }
+      for (const e of g.world.adj[pid]) if (!e.sea && enemies.includes(P.ctrl[e.to])) { contact = true; break; }
+      if (contact) break;
+    }
+    if (!contact) {
+      removeFromWar(g, war, t);
+      for (let i = 0; i < g.world.n; i++) if (P.ctrl[i] === t && enemies.includes(P.owner[i])) g.setController(i, P.owner[i]);
+      g.news(`🕊️ ${g.C(t).name} savaştan çekildi (${war.name}).`, { type: 'peace', tags: [t, ...enemies] });
+    }
+  }
 }
 
 export function applyPeaceTerms(g, loser, winners, mode, main) {
@@ -377,7 +423,7 @@ export function peaceAcceptance(g, war, aiTag, proposer, type) {
   const ws = c.warSupport;
   let v = 0;
   if (type === 'concede') v = 100; // lehine
-  else if (type === 'white') v = -score * 1.2 + (days > 180 ? 10 : 0) + (days > 540 ? 15 : 0) + (60 - ws) * 0.5 + exhaustion * 0.4 - 5;
+  else if (type === 'white') v = -score * 1.2 + (days > 180 ? 10 : 0) + (days > 540 ? 20 : 0) + (60 - ws) * 0.5 + exhaustion * 0.4 - 5;
   else if (type === 'demand') v = -score * 1.4 - 35 + (60 - ws) * 0.6 + exhaustion * 0.5 + (days > 365 ? 10 : 0);
   // Güç dengesi
   const myPow = sidePower(g, aiIsAtt ? war.att : war.def), enPow = sidePower(g, aiIsAtt ? war.def : war.att);
@@ -433,6 +479,17 @@ export function concludePeace(g, war, from, to, type, wholeWar) {
   g.rebuildEconomyCache();
   for (const t of [...war.att, ...war.def, from, to]) if (g.C(t).alive) cleanupCountry(g, t);
   g.setRel(from, to, Math.max(g.rel(from, to), -50));
+  setTruce(g, fromSide.concat(toSide));
+}
+// Barıştan sonra iki yıl ateşkes (yapay zekâ yeniden savaş açmaz)
+function setTruce(g, tags) {
+  const until = g.s.day + 730;
+  for (const a of tags) for (const b of tags) {
+    if (a === b) continue;
+    const c = g.C(a);
+    if (!c) continue;
+    (c.truce ||= {})[b] = until;
+  }
 }
 
 // ---------------------------------------------------------------------------

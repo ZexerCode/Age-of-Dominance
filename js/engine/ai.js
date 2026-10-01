@@ -64,7 +64,8 @@ function enemyPowerAt(g, pid, tag) {
   return d;
 }
 const isIdle = (u) => !u.path.length && !u.b;
-const ready = (u) => { const ut = UNIT_TYPES[u.t]; return u.s > 0.45 && u.g > (ut.org / 100) * 0.55; };
+const combatWidthOf = (g, pid) => mil.combatWidth(g, pid);
+const ready = (u) => { const ut = UNIT_TYPES[u.t]; return u.s > 0.5 && u.g > (ut.org / 100) * 0.8; };
 
 function militaryThink(g, c) {
   const tag = c.tag;
@@ -114,10 +115,24 @@ function militaryThink(g, c) {
     f.want = Math.max(1, Math.round(commit * (1 + f.threat / avgPow + Math.log10(1 + f.value)) / wSum));
     f.have = (at.get(f.pid) || 0) + (incoming.get(f.pid) || 0);
   }
+  // Ana taarruz ekseni: belirli bir hedefe kuvvet yığ
+  if (!c.ai.focus || c.ai.focus.until < g.s.day || !fronts.has(c.ai.focus.f) || !g.atWar(tag, P.ctrl[c.ai.focus.e])) {
+    let best = null;
+    for (const f of frontList) for (const e of f.adj) {
+      const val = eco.provinceValue(g, e) * (P.owner[e] === tag ? 2 : 1);
+      const score = val / (1 + provDefense(g, e, tag));
+      if (!best || score > best.score) best = { f: f.pid, e, score };
+    }
+    c.ai.focus = best ? { f: best.f, e: best.e, until: g.s.day + 60 } : null;
+  }
+  if (c.ai.focus && fronts.has(c.ai.focus.f) && GOVERNMENTS[c.gov].aggression * g.s.aiAggression >= 0.7) {
+    const ff = fronts.get(c.ai.focus.f);
+    ff.want = Math.max(ff.want, Math.min(combatWidthOf(g, c.ai.focus.e) + 2, ff.want + 6));
+  }
   // 1) Saldırılar
   const used = new Set();
   const aggressive = GOVERNMENTS[c.gov].aggression * g.s.aiAggression;
-  const needRatio = clamp(2.0 - 0.25 * aggressive, 1.4, 2.2);
+  const needRatio = clamp(1.7 - 0.25 * aggressive, 1.25, 1.9);
   const targets = new Map(); // düşman ili → saldırabilecek cepheler
   for (const f of frontList) for (const e of f.adj) { if (!targets.has(e)) targets.set(e, []); targets.get(e).push(f); }
   const targetList = [...targets.entries()].map(([e, fl]) => {
@@ -146,21 +161,20 @@ function militaryThink(g, c) {
       }
     }
     if (!cands.length) continue;
-    if (tgt.def <= 0.01) {
-      const u = cands.sort((a, b) => UNIT_TYPES[b.t].speed - UNIT_TYPES[a.t].speed)[0];
-      u.path = [tgt.e]; u.prog = 0; used.add(u.id); orders++;
-      continue;
+    // Gerçek muharebe hesabıyla kazanma tahmini; en az birlikle yetin
+    cands.sort((a, b) => unitAtk(g, b, tgt.e) - unitAtk(g, a, tgt.e));
+    let chosen = null;
+    for (let n = Math.min(cands.length, 2); n <= cands.length; n++) {
+      const set = cands.slice(0, n);
+      const est = mil.estimateBattle(g, set, tgt.e);
+      if (est.score >= needRatio && est.days < 40) { chosen = cands.slice(0, Math.min(cands.length, n + 1)); break; }
+      if (n === cands.length && est.score >= needRatio * 0.85 && aggressive > 1) chosen = set;
     }
-    let A = 0;
-    const chosen = [];
-    for (const u of cands) {
-      A += unitAtk(g, u, tgt.e) * (1 + g.techSum(c, 'combat'));
-      chosen.push(u);
-      if (A >= tgt.def * needRatio * 1.3) break;
+    if (cands.length === 1) {
+      const est = mil.estimateBattle(g, cands, tgt.e);
+      if (est.score >= needRatio && est.days < 40) chosen = cands;
     }
-    const dirs = new Set(chosen.map((u) => u.p)).size;
-    A *= 1 + Math.min(0.3, 0.1 * (dirs - 1));
-    if (A >= tgt.def * needRatio) {
+    if (chosen) {
       for (const u of chosen) { u.path = [tgt.e]; u.prog = 0; used.add(u.id); orders++; }
     }
   }
@@ -399,7 +413,7 @@ function production(g, c, atWar) {
     const pi = eco.PROD_ITEMS[item];
     const addUpkeep = (pi.upkeep || 0) * c.costFactor / 365;
     if (!atWar && b.net - addUpkeep * (queuedUnits + 1) < 0) break;
-    if (atWar && c.treasury < -b.income * 90) break;
+    if (atWar && c.treasury < -b.income * 20) break;
     const res = eco.enqueue(g, tag, item);
     if (!res.ok) {
       if (pi.kind === 'unit' && res.why === 'Yetersiz insan gücü') break;
@@ -457,7 +471,7 @@ function diplomacy(g, c, atWar) {
   const tag = c.tag;
   const s = g.s;
   // ilişki geliştirme
-  if (Object.keys(c.improving).length < 2 && g.rng.chance(0.15)) {
+  if (Object.keys(c.improving).length < 2 && c.treasury > 0 && g.rng.chance(0.15)) {
     const cands = Object.values(s.countries).filter((o) => o.alive && o.tag !== tag && o.bloc === c.bloc && !g.atWar(tag, o.tag) && g.rel(tag, o.tag) < 70 && g.rel(tag, o.tag) > 0);
     const pick = g.rng.weighted(cands, (o) => Math.sqrt(eco.countryGdp(g, o.tag)));
     if (pick) dip.improveRelations(g, tag, pick.tag);
@@ -498,6 +512,7 @@ function peace(g, c) {
     if (my > 35 && days > 100) type = 'demand';
     else if (my < -30 || (my < -15 && c.warSupport < 25)) type = 'concede';
     else if (Math.abs(my) < 15 && days > 270 && (c.exhaustion > 20 || c.warSupport < 35)) type = 'white';
+    else if (Math.abs(my) < 22 && days > 540) type = 'white';
     if (!type) continue;
     if (!lead) {
       // Lider olmayan ülke ayrı barış yapabilir
@@ -531,6 +546,8 @@ function considerWar(g, c, atWar) {
   const tag = c.tag;
   if (s.day < 45 || c.puppetOf) return;
   if (atWar || c.stability < 40 || c.warSupport < 30) return;
+  // Demokrasiler kendiliğinden fetih savaşı başlatmaz (krizler hariç)
+  if (c.gov === 'dem' && !Object.values(c.claims).some((d) => d > s.day)) return;
   const gov = GOVERNMENTS[c.gov];
   const myPow = g.militaryPower(tag);
   if (myPow < 50) return;
@@ -538,6 +555,7 @@ function considerWar(g, c, atWar) {
     const o = g.C(t);
     if (!o?.alive || g.isAlly(tag, t) || o.puppetOf === tag) continue;
     if (g.isPlayer(t) && s.day < 120) continue;
+    if ((c.truce?.[t] || 0) > s.day) continue;
     const claim = c.claims[t] > s.day;
     const r = g.rel(tag, t);
     if (r > -40 && !claim) continue;
@@ -551,7 +569,7 @@ function considerWar(g, c, atWar) {
     const ratio = myPow / Math.max(1, defPow);
     const need = 2.2 / Math.max(0.6, gov.aggression * s.aiAggression);
     if (ratio < need) continue;
-    let p = 0.0045 * gov.aggression * s.aiAggression * Math.min(2, ratio / need) * (1 + s.worldTension / 100) * (r < -70 ? 1.5 : 1);
+    let p = 0.0065 * gov.aggression * s.aiAggression * Math.min(2, ratio / need) * (1 + s.worldTension / 100) * (r < -70 ? 1.5 : 1);
     if (o.nukes > 0 && c.nukes > 0) p *= 0.15;
     if (g.isAtWar(t)) p *= 2;
     if (claim) {
@@ -582,7 +600,7 @@ function monthlyAid(g) {
         for (const donor of Object.values(s.countries)) {
           if (!donor.alive || donor.tag === recv || g.isPlayer(donor.tag) || g.isAtWar(donor.tag)) continue;
           const r = g.rel(donor.tag, recv);
-          if (r < 50 || g.rel(donor.tag, enemyLead) > -15) continue;
+          if (r < 35 || g.rel(donor.tag, enemyLead) > -15) continue;
           const amt = eco.countryGdp(g, donor.tag) * 0.00009 * (r / 100);
           if (amt < 0.02 || donor.treasury < amt * 4) continue;
           donor.treasury -= amt; rc.treasury += amt; total += amt;
@@ -590,6 +608,19 @@ function monthlyAid(g) {
         }
         if (total > 0.5 && (g.isPlayer(recv) || g.rng.chance(0.15))) {
           g.news(`💰 ${rc.name} bu ay müttefiklerinden ${total.toFixed(1)} milyar $ askeri ve mali yardım aldı.`, { type: 'diplo', tags: [recv] });
+        }
+        // Teçhizat yardımı (ödünç-kiralama): ayda en fazla bir tümenlik teçhizat
+        if (side === w.def && (rc.lendLease || 0) < 10 && g.rng.chance(0.3)) {
+          const donors = Object.values(s.countries).filter((donor) => donor.alive && donor.tag !== recv && !g.isPlayer(donor.tag) && !g.isAtWar(donor.tag)
+            && eco.countryGdp(g, donor.tag) >= 1500 && g.rel(donor.tag, recv) >= 50 && g.rel(donor.tag, enemyLead) <= -25);
+          const donor = g.rng.weighted(donors, (d) => Math.sqrt(eco.countryGdp(g, d.tag)));
+          const pid = donor ? eco.deployProvince(g, rc) : -1;
+          if (donor && pid >= 0) {
+            const type = donor.techTier >= 4 && g.rng.chance(0.4) ? 'armor' : 'mechanized';
+            g.addUnit(recv, type, pid, { x: 0.1 });
+            rc.lendLease = (rc.lendLease || 0) + 1;
+            if (g.involvesPlayer([recv, donor.tag, enemyLead]) || g.rng.chance(0.25)) g.news(`📦 ${donor.name}, ${rc.name}'na bir ${UNIT_TYPES[type].name} donatacak askeri teçhizat gönderdi.`, { type: 'diplo', tags: [donor.tag, recv] });
+          }
         }
       }
     }

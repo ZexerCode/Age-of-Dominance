@@ -20,6 +20,14 @@ const CONSCRIPTION = new Set([
   'VNM', 'TWN', 'SGP', 'THA', 'BRA', 'CYP', 'CYN', 'AZE', 'ARM', 'GEO', 'BLR', 'KAZ', 'UZB', 'TKM', 'KGZ', 'TJK', 'SYR',
   'DZA', 'MAR', 'TUN', 'COL', 'VEN', 'CUB', 'MNG', 'SRB', 'ERI', 'MLI', 'BFA', 'NER',
 ]);
+// Savaşta seferber edilebilen yedek kuvvetler (bin kişi)
+export const RESERVES = {
+  ISR: 465, FIN: 238, KOR: 3100, TWN: 1650, SGP: 250, CHE: 120, SWE: 30, NOR: 40, GRC: 220, TUR: 380, RUS: 2000,
+  IRN: 350, ARM: 210, AZE: 300, POL: 30, EST: 30, LVA: 20, LTU: 30, VNM: 5000, PRK: 600, CUB: 40, EGY: 480, IND: 1150,
+  PAK: 550, CHN: 510, USA: 800, GBR: 70, FRA: 40, DEU: 30, JPN: 50, SAU: 100, IRQ: 50, SYR: 50, DZA: 150, MAR: 150,
+  GEO: 40, BLR: 290, KAZ: 50, UZB: 50, THA: 200, IDN: 400, MMR: 100, AUS: 30, CAN: 30, ITA: 18, ESP: 15, BRA: 1340,
+  COL: 35, VEN: 50, ARG: 0, ROU: 50, BGR: 3, SRB: 50, HUN: 20, DNK: 40, CYP: 50, CYN: 30, JOR: 65, LBN: 0, MNG: 137,
+};
 const MOBILIZED = { UKR: 'mobilization', PRK: 'mobilization', RUS: 'conscription', ERI: 'mobilization' };
 const STABILITY = {
   UKR: 58, RUS: 62, SDN: 18, SDS: 22, HTI: 15, MMR: 25, SYR: 38, LBN: 35, YEM: 20, AFG: 42, PRK: 80, ISR: 50, VEN: 32,
@@ -241,7 +249,8 @@ export function createGame(world, opts = {}) {
       const ctrl = P.ctrl[p.id];
       const enemySide = w.attackers.includes(ctrl) ? w.defenders : w.attackers;
       const touches = world.adj[p.id].some((e) => !e.sea && enemySide.includes(P.ctrl[e.to]));
-      if (touches) P.fort[p.id] = own === ctrl ? 3 : 2;
+      if (touches) P.fort[p.id] = own === ctrl ? 4 : 3;
+      else if (w.defenders.includes(own) && own === ctrl && world.adj[p.id].some((e) => !e.sea && world.adj[e.to].some((e2) => enemySide.includes(P.ctrl[e2.to])))) P.fort[p.id] = 2;
     }
   }
 
