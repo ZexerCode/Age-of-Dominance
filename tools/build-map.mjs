@@ -711,12 +711,27 @@ function encodeArc(arc) {
   for (let k = 1; k < arc.length; k++) out.push(arc[k][0] - arc[k - 1][0], arc[k][1] - arc[k - 1][1]);
   return out;
 }
+// Aynı ülkede aynı adı taşıyan iller (ör. Moskova şehri ve Moskova bölgesi)
+{
+  const seenNames = new Map();
+  provinces.forEach((p, pi) => {
+    if (!p.name || p.name === '?') p.name = p.city || 'Adalar';
+    const key = `${p.tag}|${p.name}`;
+    if (!seenNames.has(key)) seenNames.set(key, []);
+    seenNames.get(key).push(pi);
+  });
+  for (const list of seenNames.values()) {
+    if (list.length < 2) continue;
+    list.sort((a, b) => provinces[a].area - provinces[b].area);
+    list.slice(1).forEach((pi, k) => { provinces[pi].name = `${provinces[pi].name} ${k === 0 ? 'Bölgesi' : `Bölgesi ${k + 1}`}`; });
+  }
+}
 const outProvinces = provinces.map((p, pi) => {
   const o = {
     n: p.name, t: p.tag,
     g: p.polysArcs,
     l: p.label, lr: p.labelR, ll: p.ll,
-    a: Math.round(p.area),
+    a: Math.max(1, Math.round(p.area)),
     tr: p.terrain,
     ps: Math.round(p.popShare * 1e6) / 1e6,
     gs: Math.round(p.gdpShare * 1e6) / 1e6,

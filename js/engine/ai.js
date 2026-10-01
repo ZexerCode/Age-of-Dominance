@@ -13,8 +13,9 @@ export function dailyAI(g) {
   processRetaliation(g);
   for (const tag of Object.keys(s.countries)) {
     const c = s.countries[tag];
-    if (!c.alive || g.isPlayer(tag)) continue;
+    if (!c.alive) continue;
     if (c.ai.hash === undefined) initAI(g, c);
+    if (g.isPlayer(tag)) { playerDelegation(g, c); continue; }
     const h = c.ai.hash;
     const atWar = g.isAtWar(tag);
     if (atWar ? (s.day + h) % 2 === 0 : (s.day + h) % 15 === 0) {
@@ -25,6 +26,21 @@ export function dailyAI(g) {
     }
   }
   if (s.day % 30 === 15) monthlyAid(g);
+}
+
+// Oyuncunun yapay zekâya devrettiği görevler (generaller, sanayi, bilim kurulu)
+function playerDelegation(g, c) {
+  const auto = c.auto;
+  if (!auto) return;
+  const s = g.s, h = c.ai.hash;
+  const atWar = g.isAtWar(c.tag);
+  try {
+    if (auto.army && (atWar ? (s.day + h) % 2 === 0 : (s.day + h) % 15 === 0)) militaryThink(g, c);
+    if ((s.day + h) % 10 === 0) {
+      if (auto.prod) production(g, c, atWar);
+      if (auto.research) research(g, c);
+    }
+  } catch (e) { console.error('Oyuncu yapay zekâ hatası', e); }
 }
 
 function initAI(g, c) {

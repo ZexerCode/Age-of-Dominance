@@ -33,6 +33,18 @@ function renderProduction(app, body) {
   body.appendChild(h('div', { class: 'stat-grid', style: { marginBottom: '12px' } },
     stat('Fabrika', fmtInt(fac)), stat('Üretim/gün', fmt1(pp)), stat('İnsan gücü', fmtManpower(Math.max(0, mp.available))),
     stat('Hazine', fmtMoney(c.treasury), c.treasury < 0 ? 'red' : ''), stat('Maliyet endeksi', `×${fmt1(c.costFactor)}`), stat('Kuyruk', `${c.queue.length}`)));
+  // Yapay zekâya devretme
+  c.auto ||= {};
+  const tog = (key, label, hint) => {
+    const cb = h('input', { type: 'checkbox' });
+    cb.checked = !!c.auto[key];
+    cb.addEventListener('change', () => { c.auto[key] = cb.checked; app.toast(cb.checked ? `${label} yapay zekâya devredildi.` : `${label} yeniden sizin kontrolünüzde.`, 'diplo'); });
+    return h('label', { class: 'row small', style: { cursor: 'pointer' }, title: hint }, cb, label);
+  };
+  body.appendChild(section('🤖 Komuta Devri', h('div', { class: 'stack', style: { gap: '4px' } },
+    tog('army', 'Genelkurmay: cephe ve saldırıları yönetsin', 'Yapay zekâ birliklerinizi cephelere dağıtır ve uygun gördüğü saldırıları yapar.'),
+    tog('prod', 'Savunma sanayii: üretimi yönetsin', 'Bütçe ve tehdit durumuna göre otomatik üretim yapılır.'),
+    tog('research', 'Bilim kurulu: araştırmayı yönetsin', 'Boş araştırma yuvaları otomatik doldurulur.'))));
   const dep = eco.deployProvince(g, c);
   body.appendChild(h('div', { class: 'tiny muted', style: { marginBottom: '10px' } }, `📍 Yeni birlikler: ${dep >= 0 ? app.world.provinces[dep].name : '—'} (bir ile tıklayıp "burada konuşlandır" diyerek değiştirin)`));
 
